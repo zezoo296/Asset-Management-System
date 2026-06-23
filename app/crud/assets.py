@@ -42,3 +42,15 @@ def get_assets(
     items = query.offset(offset).limit(params.limit).all()
 
     return items, total
+
+
+def get_asset_by_id(
+    db: Session,
+    organization_id: UUID,
+    asset_id: UUID,
+) -> Asset | None:
+    return (
+        db.query(Asset)
+        .filter(Asset.id == asset_id, Asset.organization_id == organization_id)
+        .first()
+    )
