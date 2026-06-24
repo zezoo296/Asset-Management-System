@@ -1,5 +1,6 @@
 from uuid import UUID
 
+from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from models.relation import Relation
@@ -10,6 +11,21 @@ def get_relations(db: Session, organization_id: UUID) -> list[Relation]:
     return (
         db.query(Relation)
         .filter(Relation.organization_id == organization_id)
+        .all()
+    )
+
+
+def get_asset_relations(
+    db: Session,
+    organization_id: UUID,
+    asset_id: str,
+) -> list[Relation]:
+    return (
+        db.query(Relation)
+        .filter(
+            Relation.organization_id == organization_id,
+            or_(Relation.from_id == asset_id, Relation.to_id == asset_id),
+        )
         .all()
     )
 

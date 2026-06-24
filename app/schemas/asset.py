@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from models.enums import AssetSource, AssetStatus, AssetType
+from models.enums import AssetSource, AssetStatus, AssetType, RelationType
 
 
 class AssetUpsertData(BaseModel):
@@ -61,3 +61,31 @@ class PaginatedAssetResponse(BaseModel):
     page: int
     limit: int
     pages: int
+
+
+class AssetGraphNode(BaseModel):
+    id: str
+    type: AssetType
+    value: str
+    status: AssetStatus
+    source: list[AssetSource]
+    tags: list[str]
+    metadata: dict = Field(validation_alias="metadata_")
+    first_seen: datetime
+    last_seen: datetime
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
+
+
+class AssetGraphEdge(BaseModel):
+    from_id: str = Field(serialization_alias="from")
+    to_id: str = Field(serialization_alias="to")
+    type: RelationType
+
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True, ser_json_by_alias=True)
+
+
+class AssetGraphResponse(BaseModel):
+    root_asset_id: str
+    nodes: list[AssetGraphNode]
+    edges: list[AssetGraphEdge]

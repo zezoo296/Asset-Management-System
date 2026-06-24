@@ -6,10 +6,18 @@ from sqlalchemy.orm import Session
 from api.deps import get_current_organization
 from core.database import get_db
 from models.organization import Organization
-from schemas.asset import AssetCreate, AssetListParams, AssetRead, AssetUpdate, PaginatedAssetResponse
+from schemas.asset import (
+    AssetCreate,
+    AssetGraphResponse,
+    AssetListParams,
+    AssetRead,
+    AssetUpdate,
+    PaginatedAssetResponse,
+)
 from services.assets import create_asset
 from services.assets import delete_asset
 from services.assets import get_asset
+from services.assets import get_asset_graph
 from services.assets import list_assets
 from services.assets import update_asset
 
@@ -63,3 +71,12 @@ def delete_asset_route(
     current_org: Organization = Depends(get_current_organization),
 ):
     delete_asset(db, current_org.id, asset_id)
+
+
+@router.get("/{asset_id}/graph", response_model=AssetGraphResponse)
+def get_asset_graph_route(
+    asset_id: str,
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
+):
+    return get_asset_graph(db, current_org.id, asset_id)
