@@ -104,21 +104,26 @@ def update_asset(
     existing: Asset,
     incoming: AssetUpsertData,
 ) -> Asset:
-    existing.metadata_ = {**existing.metadata_, **incoming.metadata}
+    if(incoming.metadata):
+        existing.metadata_ = {**existing.metadata_, **incoming.metadata}
 
-    if incoming.source not in existing.source:
+    if incoming.source and incoming.source not in existing.source:
         existing.source = existing.source + [incoming.source]
 
-    merged_tags = list(existing.tags)
-    for tag in incoming.tags:
-        if tag not in merged_tags:
-            merged_tags.append(tag)
-    existing.tags = merged_tags
+    if(incoming.tags):
+        merged_tags = list(existing.tags)
+        for tag in incoming.tags:
+            if tag not in merged_tags:
+                merged_tags.append(tag)
+        existing.tags = merged_tags
 
     if existing.status == AssetStatus.STALE:
         existing.status = AssetStatus.ACTIVE
 
-    if existing.type == AssetType.CERTIFICATE and "expires" in incoming.metadata:
+    if incoming.status:
+        existing.status = incoming.status
+
+    if existing.type == AssetType.CERTIFICATE and incoming.metadata and "expires" in incoming.metadata:
         existing.metadata_["expires"] = incoming.metadata["expires"]
 
     existing.last_seen = datetime.now(timezone.utc)

@@ -6,8 +6,8 @@ from models.enums import RelationType
 
 
 class RelationBase(BaseModel):
-    from_id: UUID
-    to_id: UUID
+    from_id: str
+    to_id: str
     type: RelationType
 
 
@@ -16,4 +16,6 @@ class RelationCreate(RelationBase):
 
 
 class RelationRead(RelationBase):
+    organization_id: UUID
+
     model_config = ConfigDict(from_attributes=True)

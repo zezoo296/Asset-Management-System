@@ -30,7 +30,7 @@ class AssetUpdate(BaseModel):
 
 
 class AssetRead(BaseModel):
-    id: str
+    id: str 
     type: AssetType
     value: str
     status: AssetStatus
