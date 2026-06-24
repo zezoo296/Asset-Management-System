@@ -8,8 +8,8 @@ from sqlalchemy.orm import Session
 from crud.assets import create_asset as create_asset_crud
 from crud.assets import delete_asset as delete_asset_crud
 from crud.assets import get_asset_by_id
-from crud.assets import get_asset_by_unique_key
-from crud.assets import get_assets as get_assets_crud
+from crud.assets import get_asset_by_unique_key, get_expiring_soon_assets as get_expiring_soon_assets_crud
+from crud.assets import get_assets as get_assets_crud, get_expired_assets as get_expired_assets_crud
 from crud.assets import update_asset as update_asset_crud
 from crud.relations import get_asset_relations
 from models.asset import Asset
@@ -127,3 +127,9 @@ def get_asset_graph(
         ],
         edges=list(edges.values()),
     )
+
+def get_expiring_soon_assets(db: Session, organization_id: UUID):
+    return get_expiring_soon_assets_crud(db, organization_id)
+
+def get_expired_assets(db: Session, organization_id: UUID):
+    return get_expired_assets_crud(db, organization_id)

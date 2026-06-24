@@ -1,8 +1,9 @@
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone, timedelta
 from uuid import UUID
-
+from sqlalchemy import cast, Date
 from sqlalchemy.orm import Session
 
+from core.config import EXPIRING_SOON_DAYS
 from models.asset import Asset
 from models.enums import AssetStatus, AssetType
 from schemas.asset import AssetCreate, AssetListParams, AssetUpsertData
@@ -136,3 +137,35 @@ def update_asset(
 def delete_asset(db: Session, asset: Asset) -> None:
     db.delete(asset)
     db.commit()
+
+
+def get_expiring_soon_assets(db: Session, organization_id: UUID):
+    today = date.today()
+    cutoff = today + timedelta(days=int(EXPIRING_SOON_DAYS))
+
+    expires = cast(Asset.metadata_["expires"].astext, Date)
+    assets = (
+        db.query(Asset)
+        .filter(Asset.organization_id == organization_id)
+        .filter(Asset.type == AssetType.CERTIFICATE)
+        .filter(Asset.metadata_["expires"].is_not(None))
+        .filter(expires.between(today, cutoff))
+        .all()
+    )
+    return assets
+
+
+
+def get_expired_assets(db: Session, organization_id: UUID):
+    today = date.today()
+    expires = cast(Asset.metadata_["expires"].astext, Date)
+    
+    assets = (
+        db.query(Asset)
+        .filter(Asset.organization_id == organization_id)
+        .filter(Asset.type == AssetType.CERTIFICATE)
+        .filter(Asset.metadata_["expires"].is_not(None))
+        .filter(expires < today)
+        .all()
+    )
+    return assets

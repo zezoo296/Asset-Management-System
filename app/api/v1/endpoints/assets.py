@@ -20,6 +20,8 @@ from services.assets import get_asset
 from services.assets import get_asset_graph
 from services.assets import list_assets
 from services.assets import update_asset
+from services.assets import get_expiring_soon_assets as get_expiring_soon_assets_service
+from services.assets import get_expired_assets as get_expired_assets_service
 
 router = APIRouter()
 
@@ -31,6 +33,22 @@ def get_assets(
     current_org: Organization = Depends(get_current_organization),
 ):
     return list_assets(db, current_org.id, params)
+
+
+@router.get("/expiring-soon")
+def get_expiring_soon_assets(
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization)
+) :
+    return get_expiring_soon_assets_service(db, current_org.id)
+
+
+@router.get("/expired")
+def get_expired_assets(
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization)
+) :
+    return get_expired_assets_service(db, current_org.id)
 
 
 @router.get("/{asset_id}", response_model=AssetRead)
@@ -80,3 +98,5 @@ def get_asset_graph_route(
     current_org: Organization = Depends(get_current_organization),
 ):
     return get_asset_graph(db, current_org.id, asset_id)
+
+
