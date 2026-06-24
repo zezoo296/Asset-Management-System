@@ -1,3 +1,4 @@
+from ast import Import
 import enum
 
 
@@ -8,6 +9,11 @@ class AssetType(str, enum.Enum):
     SERVICE = "service"
     CERTIFICATE = "certificate"
     TECHNOLOGY = "technology"
+
+class AssetSource(str, enum.Enum):
+    IMPORT = "import"
+    SCAN = "scan"
+    MANUAL = "manual"
 
 
 class AssetStatus(str, enum.Enum):
@@ -21,4 +27,5 @@ class RelationType(str, enum.Enum):
     COVERS = "covers"
     DETECTED_ON = "detected_on"
     RESOLVES_TO = "resolves_to"
+    Resolved_FROM = "resolved_from"
     RUNS_ON = "runs_on"

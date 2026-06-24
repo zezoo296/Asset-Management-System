@@ -3,20 +3,18 @@ from __future__ import annotations
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String, func
+from sqlalchemy import DateTime, Enum, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
-from sqlalchemy.orm import Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column
 
 from core.database import Base
-from models.enums import AssetStatus, AssetType
+from models.enums import AssetStatus, AssetType, AssetSource
 
 
 class Asset(Base):
     __tablename__ = "assets"
 
-    id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), primary_key=True, default=uuid.uuid4
-    )
+    id: Mapped[str] = mapped_column(String(255), primary_key=True)
     type: Mapped[AssetType] = mapped_column(Enum(AssetType), nullable=False)
     value: Mapped[str] = mapped_column(String(512), nullable=False)
     status: Mapped[AssetStatus] = mapped_column(
@@ -28,8 +26,8 @@ class Asset(Base):
     last_seen: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
-    source: Mapped[list[str]] = mapped_column(
-        ARRAY(String), nullable=False, default=list
+    source: Mapped[list[AssetSource]] = mapped_column(
+        ARRAY(Enum(AssetSource)), nullable=False, default=list
     )
     tags: Mapped[list[str]] = mapped_column(
         ARRAY(String), nullable=False, default=list
@@ -39,3 +37,6 @@ class Asset(Base):
         UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
     )
 
+    __table_args__ = (
+        UniqueConstraint("type", "value", "organization_id"),
+    )

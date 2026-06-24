@@ -1,44 +1,45 @@
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 from uuid import UUID
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from models.enums import AssetStatus, AssetType
+from models.enums import AssetSource, AssetStatus, AssetType
 
 
-class AssetBase(BaseModel):
+class AssetUpsertData(BaseModel):
     type: AssetType
     value: str
     status: AssetStatus = AssetStatus.ACTIVE
-    source: list[str] = Field(default_factory=list)
+    source: AssetSource
     tags: list[str] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
-    organization_id: UUID
 
 
-class AssetCreate(AssetBase):
-    first_seen: datetime | None = None
-    last_seen: datetime | None = None
+class AssetCreate(AssetUpsertData):
+    id: str
 
 
 class AssetUpdate(BaseModel):
     type: AssetType | None = None
     value: str | None = None
     status: AssetStatus | None = None
-    first_seen: datetime | None = None
-    last_seen: datetime | None = None
-    source: list[str] | None = None
+    source: AssetSource | None = None
     tags: list[str] | None = None
-    metadata: dict | None = None
-    organization_id: UUID | None = None
+    metadata: dict[str, Any] | None = None
 
 
-class AssetRead(AssetBase):
-    id: UUID
+class AssetRead(BaseModel):
+    id: str
+    type: AssetType
+    value: str
+    status: AssetStatus
+    source: list[AssetSource] 
+    tags: list[str]
+    metadata: dict = Field(validation_alias="metadata_")
+    organization_id: UUID
     first_seen: datetime
     last_seen: datetime
-    metadata: dict = Field(validation_alias="metadata_")
 
     model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 

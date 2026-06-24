@@ -1,9 +1,11 @@
+from datetime import datetime, timezone
 from uuid import UUID
 
 from sqlalchemy.orm import Session
 
 from models.asset import Asset
-from schemas.asset import AssetListParams
+from models.enums import AssetStatus, AssetType
+from schemas.asset import AssetCreate, AssetListParams, AssetUpsertData
 
 SORTABLE_COLUMNS = {
     "type": Asset.type,
@@ -47,10 +49,85 @@ def get_assets(
 def get_asset_by_id(
     db: Session,
     organization_id: UUID,
-    asset_id: UUID,
+    asset_id: str,
 ) -> Asset | None:
     return (
         db.query(Asset)
         .filter(Asset.id == asset_id, Asset.organization_id == organization_id)
         .first()
     )
+
+
+def get_asset_by_unique_key(
+    db: Session,
+    organization_id: UUID,
+    asset_type: AssetType,
+    value: str,
+) -> Asset | None:
+    return (
+        db.query(Asset)
+        .filter(
+            Asset.organization_id == organization_id,
+            Asset.type == asset_type,
+            Asset.value == value,
+        )
+        .first()
+    )
+
+
+def create_asset(
+    db: Session,
+    organization_id: UUID,
+    data: AssetCreate,
+) -> Asset:
+    now = datetime.now(timezone.utc)
+    asset = Asset(
+        id=data.id,
+        type=data.type,
+        value=data.value,
+        status=data.status,
+        source=[data.source],
+        tags=list(data.tags),
+        metadata_=dict(data.metadata),
+        organization_id=organization_id,
+        first_seen=now,
+        last_seen=now,
+    )
+    db.add(asset)
+    db.commit()
+    db.refresh(asset)
+    return asset
+
+
+def update_asset(
+    db: Session,
+    existing: Asset,
+    incoming: AssetUpsertData,
+) -> Asset:
+    existing.metadata_ = {**existing.metadata_, **incoming.metadata}
+
+    if incoming.source not in existing.source:
+        existing.source = existing.source + [incoming.source]
+
+    merged_tags = list(existing.tags)
+    for tag in incoming.tags:
+        if tag not in merged_tags:
+            merged_tags.append(tag)
+    existing.tags = merged_tags
+
+    if existing.status == AssetStatus.STALE:
+        existing.status = AssetStatus.ACTIVE
+
+    if existing.type == AssetType.CERTIFICATE and "expires" in incoming.metadata:
+        existing.metadata_["expires"] = incoming.metadata["expires"]
+
+    existing.last_seen = datetime.now(timezone.utc)
+
+    db.commit()
+    db.refresh(existing)
+    return existing
+
+
+def delete_asset(db: Session, asset: Asset) -> None:
+    db.delete(asset)
+    db.commit()
