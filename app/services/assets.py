@@ -5,6 +5,8 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
+from sqlalchemy.exc import IntegrityError
+from psycopg2.errors import ForeignKeyViolation
 
 from crud.assets import create_asset as create_asset_crud
 from crud.assets import delete_asset as delete_asset_crud
@@ -140,7 +142,11 @@ def import_assets(
             asset_data = AssetCreate.model_validate(item)
         except ValidationError as e:
             response["failed"] += 1
-            response["errors"].append(str(e))
+            response["errors"].append({
+                "asset": item.get("id"),
+                "error": "Validation failed.",
+                "details": e.errors(),
+            })
             continue
 
         try:
@@ -150,11 +156,15 @@ def import_assets(
                     response["created"] += 1
                 else:
                     response["updated"] += 1
+
                 extract_asset_relations(asset_data, relations)
 
         except Exception as e:
             response["failed"] += 1
-            response["errors"].append(str(e))
+            response["errors"].append({
+                "asset": item.get("id"),
+                "error": "Failed to import asset.",
+            })
             continue
     db.commit()
 
@@ -163,9 +173,22 @@ def import_assets(
             with db.begin_nested():
                 create_relation_crud(db, organization_id, relation, commit=False)
                 response["relationships_created"] += 1
+        except IntegrityError as e:
+            if isinstance(e.orig, ForeignKeyViolation):
+                response["errors"].append({
+                    "relation": relation.from_id,
+                    "error": f"Referenced asset '{relation.to_id}' does not exist."
+                })
+            else:
+                response["errors"].append({
+                    "relation": relation.from_id,
+                    "error": "Database integrity error."
+                })
         except Exception as e:
-            response["errors"].append(str(e))
-            continue
+            response["errors"].append({
+                "relation": relation.from_id,
+                "error": "Unexpected error while creating relation."
+            })
     db.commit()
 
     return response
