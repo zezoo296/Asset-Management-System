@@ -34,6 +34,7 @@ def create_relation(
     db: Session,
     organization_id: UUID,
     data: RelationCreate,
+    commit: bool = True,
 ) -> Relation:
     relation = Relation(
         from_id=data.from_id,
@@ -42,6 +43,10 @@ def create_relation(
         organization_id=organization_id,
     )
     db.add(relation)
-    db.commit()
-    db.refresh(relation)
+    
+    if commit:
+        db.commit()
+    else:
+        db.flush()
+
     return relation

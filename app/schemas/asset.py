@@ -14,6 +14,13 @@ class AssetUpsertData(BaseModel):
     source: AssetSource
     tags: list[str] = Field(default_factory=list)
     metadata: dict = Field(default_factory=dict)
+    parent: str | None = None
+    resolves_to: str | None = None
+    covers: str | None = None
+    resolved_from: str | None = None
+    runs_on: str | None = None
+    detected_on: str | None = None
+    
 
 
 class AssetCreate(AssetUpsertData):

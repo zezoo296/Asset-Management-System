@@ -80,6 +80,7 @@ def create_asset(
     db: Session,
     organization_id: UUID,
     data: AssetCreate,
+    commit: bool = True,
 ) -> Asset:
     now = datetime.now(timezone.utc)
     asset = Asset(
@@ -95,8 +96,10 @@ def create_asset(
         last_seen=now,
     )
     db.add(asset)
-    db.commit()
-    db.refresh(asset)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return asset
 
 
@@ -104,6 +107,7 @@ def update_asset(
     db: Session,
     existing: Asset,
     incoming: AssetUpsertData,
+    commit: bool = True
 ) -> Asset:
     if(incoming.metadata):
         existing.metadata_ = {**existing.metadata_, **incoming.metadata}
@@ -129,8 +133,10 @@ def update_asset(
 
     existing.last_seen = datetime.now(timezone.utc)
 
-    db.commit()
-    db.refresh(existing)
+    if commit:
+        db.commit()
+    else:
+        db.flush()
     return existing
 
 

@@ -20,6 +20,7 @@ from services.assets import get_asset
 from services.assets import get_asset_graph
 from services.assets import list_assets
 from services.assets import update_asset
+from services.assets import import_assets
 from services.assets import get_expiring_soon_assets as get_expiring_soon_assets_service
 from services.assets import get_expired_assets as get_expired_assets_service
 
@@ -70,6 +71,22 @@ def create_asset_route(
     asset, created = create_asset(db, current_org.id, data)
     response.status_code = status.HTTP_201_CREATED if created else status.HTTP_200_OK
     return asset
+
+@router.post("/import")
+def import_assets_route(
+    data: list[dict],
+    response: Response,
+    db: Session = Depends(get_db),
+    current_org: Organization = Depends(get_current_organization),
+):
+    result = import_assets(db, current_org.id, data)
+
+    if result["failed"] == 0:
+        response.status_code = status.HTTP_200_OK
+    else:
+        response.status_code = status.HTTP_207_MULTI_STATUS
+
+    return result
 
 
 @router.patch("/{asset_id}", response_model=AssetRead)

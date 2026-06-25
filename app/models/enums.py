@@ -27,5 +27,5 @@ class RelationType(str, enum.Enum):
     COVERS = "covers"
     DETECTED_ON = "detected_on"
     RESOLVES_TO = "resolves_to"
-    Resolved_FROM = "resolved_from"
+    RESOLVED_FROM = "resolved_from"
     RUNS_ON = "runs_on"

@@ -3,6 +3,7 @@ from collections import deque
 from uuid import UUID
 
 from fastapi import HTTPException, status
+from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
 from crud.assets import create_asset as create_asset_crud
@@ -12,7 +13,10 @@ from crud.assets import get_asset_by_unique_key, get_expiring_soon_assets as get
 from crud.assets import get_assets as get_assets_crud, get_expired_assets as get_expired_assets_crud
 from crud.assets import update_asset as update_asset_crud
 from crud.relations import get_asset_relations
+from crud.relations import create_relation as create_relation_crud
 from models.asset import Asset
+from models.enums import AssetType, RelationType
+
 from schemas.asset import (
     AssetCreate,
     AssetGraphEdge,
@@ -22,6 +26,7 @@ from schemas.asset import (
     AssetUpdate,
     PaginatedAssetResponse,
 )
+from schemas.relation import RelationCreate
 
 
 def list_assets(
@@ -55,17 +60,116 @@ def create_asset(
     db: Session,
     organization_id: UUID,
     data: AssetCreate,
-) -> tuple[Asset, bool]:
+    commit: bool = True,
+) :
     existing = get_asset_by_unique_key(
         db, organization_id, data.type, data.value
     )
     if existing is not None:
-        updated = update_asset_crud(db, existing, data)
+        updated = update_asset_crud(db, existing, data, commit=commit)
         return updated, False
 
-    created = create_asset_crud(db, organization_id, data)
+    created = create_asset_crud(db, organization_id, data, commit=commit)
     return created, True
 
+
+def extract_asset_relations(
+    asset: AssetCreate,
+    relations: list[RelationCreate],
+) -> None:
+    if asset.type == AssetType.SUBDOMAIN:
+        if asset.parent:
+            relations.append(RelationCreate(
+                from_id=asset.id,
+                to_id=asset.parent,
+                type=RelationType.PARENT,
+            ))
+        if asset.resolves_to:
+            relations.append(RelationCreate(
+                from_id=asset.id,
+                to_id=asset.resolves_to,
+                type=RelationType.RESOLVES_TO,
+            ))
+    elif asset.type == AssetType.CERTIFICATE:
+        if asset.covers:
+            relations.append(RelationCreate(
+                from_id=asset.id,
+                to_id=asset.covers,
+                type=RelationType.COVERS,
+            ))
+    elif asset.type == AssetType.IP_ADDRESS:
+        if asset.resolved_from:
+            relations.append(RelationCreate(
+                from_id=asset.id,
+                to_id=asset.resolved_from,
+                type=RelationType.RESOLVED_FROM,
+            ))
+    elif asset.type == AssetType.SERVICE:
+        if asset.runs_on:
+            relations.append(RelationCreate(
+                from_id=asset.id,
+                to_id=asset.runs_on,
+                type=RelationType.RUNS_ON,
+            ))
+    elif asset.type == AssetType.TECHNOLOGY:
+        if asset.detected_on:
+            relations.append(RelationCreate(
+                from_id=asset.id,
+                to_id=asset.detected_on,
+                type=RelationType.DETECTED_ON,
+            ))
+
+
+
+def import_assets(
+    db: Session,
+    organization_id: UUID,
+    data: list[dict],
+) -> dict:
+    response = {
+        "created": 0,
+        "updated": 0,
+        "relationships_created": 0,
+        "failed": 0,
+        "errors": [],
+    }
+    relations = []
+
+    for item in data:
+        try:
+            asset_data = AssetCreate.model_validate(item)
+        except ValidationError as e:
+            response["failed"] += 1
+            response["errors"].append(str(e))
+            continue
+
+        try:
+            with db.begin_nested():
+                _, is_new = create_asset(db, organization_id, asset_data, commit=False)
+                if is_new:
+                    response["created"] += 1
+                else:
+                    response["updated"] += 1
+                extract_asset_relations(asset_data, relations)
+
+        except Exception as e:
+            response["failed"] += 1
+            response["errors"].append(str(e))
+            continue
+    db.commit()
+
+    for relation in relations:
+        try:
+            with db.begin_nested():
+                create_relation_crud(db, organization_id, relation, commit=False)
+                response["relationships_created"] += 1
+        except Exception as e:
+            response["errors"].append(str(e))
+            continue
+    db.commit()
+
+    return response
+  
 
 def update_asset(
     db: Session,
