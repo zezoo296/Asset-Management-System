@@ -15,7 +15,7 @@ class Asset(Base):
     __tablename__ = "assets"
 
     id: Mapped[str] = mapped_column(String(255), primary_key=True)
-    type: Mapped[AssetType] = mapped_column(Enum(AssetType), nullable=False)
+    type: Mapped[AssetType] = mapped_column(Enum(AssetType), nullable=False, index=True)
     value: Mapped[str] = mapped_column(String(512), nullable=False)
     status: Mapped[AssetStatus] = mapped_column(
         Enum(AssetStatus), nullable=False, default=AssetStatus.ACTIVE
@@ -34,7 +34,7 @@ class Asset(Base):
     )
     metadata_: Mapped[dict] = mapped_column("metadata", JSONB, nullable=False, default=dict)
     organization_id: Mapped[uuid.UUID] = mapped_column(
-        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False
+        UUID(as_uuid=True), ForeignKey("organizations.id"), nullable=False, index=True
     )
 
     __table_args__ = (
