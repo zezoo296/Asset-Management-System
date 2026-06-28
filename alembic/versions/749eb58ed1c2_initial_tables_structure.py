@@ -46,7 +46,7 @@ def upgrade() -> None:
     op.create_table('relations',
     sa.Column('from_id', sa.UUID(), nullable=False),
     sa.Column('to_id', sa.UUID(), nullable=False),
-    sa.Column('type', sa.Enum('PARENT', 'COVERS', 'DETECTED_ON', 'RESOLVES_TO', 'RUNS_ON', name='relationtype'), nullable=False),
+    sa.Column('type', sa.Enum('PARENT', 'COVERS', 'DETECTED_ON', 'RESOLVES_TO','RESOLVED_FROM', 'RUNS_ON', name='relationtype'), nullable=False),
     sa.ForeignKeyConstraint(['from_id'], ['assets.id'], ),
     sa.ForeignKeyConstraint(['to_id'], ['assets.id'], ),
     sa.PrimaryKeyConstraint('from_id', 'to_id', 'type')
