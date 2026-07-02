@@ -1,0 +1,33 @@
+name: CI
+
+on:
+    push:
+        branches:
+            - main
+
+    pull_request:
+
+jobs:
+    test:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Create .env
+              run: cp .env.example .env
+
+            - name: Start containers
+              run: docker compose up -d
+
+            - name: Run tests
+              run: docker compose exec -T api pytest
+
+            - name: Show logs if tests fail
+              if: failure()
+              run: docker compose logs
+
+            - name: Stop containers
+              if: always()
+              run: docker compose down -v
