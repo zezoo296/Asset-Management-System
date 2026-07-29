@@ -1,4 +1,3 @@
-from ast import Import
 import enum
 
 
@@ -29,3 +28,10 @@ class RelationType(str, enum.Enum):
     RESOLVES_TO = "resolves_to"
     RESOLVED_FROM = "resolved_from"
     RUNS_ON = "runs_on"
+
+
+class ImportJobStatus(str, enum.Enum):
+    PENDING = "pending"
+    RUNNING = "running"
+    SUCCESS = "success"
+    FAILED = "failed"
