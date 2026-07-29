@@ -108,6 +108,22 @@ POST /api/v1/assets/import
 
 Accepts a JSON array of asset records (same shape as the sample dataset). Returns counts of `created`, `updated`, `failed`, `relationships_created`, and an `errors` list. Returns **207 Multi-Status** when any record fails; **200** when all succeed.
 
+### Large imports with background jobs
+
+For large datasets, use the dedicated background import endpoints:
+
+```bash
+POST /api/v1/asset-imports/
+GET /api/v1/asset-imports/
+GET /api/v1/asset-imports/{job_id}
+```
+
+- `POST /api/v1/asset-imports/` accepts the same asset payload array, creates an import job record, and queues processing in the background.
+- The API responds with **202 Accepted** and a `job_id` immediately so the client does not wait for the full import to finish.
+- `GET /api/v1/asset-imports/` lists import jobs for the current organization, and `GET /api/v1/asset-imports/{job_id}` returns the job status plus counters such as `processed_rows`, `created_count`, `updated_count`, `relationships_created_count`, and `failed_count`.
+
+This is the recommended flow for large asset imports because Celery handles the work asynchronously while the API remains responsive.
+
 ---
 
 ## Design decisions
@@ -357,15 +373,6 @@ pytest tests -v
 ├── Dockerfile
 └── .env.example
 ```
-
----
-
-## What I would do next
-
-- GitHub Actions CI running tests on every push
-- Role-based access control beyond organization-scoped JWT
-- Standalone HTML/JS graph viewer consuming `GET /assets/{id}/graph`
-- LangChain analysis layer (Track B bonus feature)
 
 ---
 
