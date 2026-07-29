@@ -14,6 +14,7 @@ from crud.assets import get_asset_by_id
 from crud.assets import get_asset_by_unique_key, get_expiring_soon_assets as get_expiring_soon_assets_crud
 from crud.assets import get_assets as get_assets_crud, get_expired_assets as get_expired_assets_crud
 from crud.assets import update_asset as update_asset_crud
+from crud.import_jobs import update_import_job_progress
 from crud.relations import get_asset_relations
 from crud.relations import create_relation as create_relation_crud
 from models.asset import Asset
@@ -122,11 +123,11 @@ def extract_asset_relations(
             ))
 
 
-
 def import_assets(
     db: Session,
     organization_id: UUID,
     data: list[dict],
+    job_id: UUID | None = None,
 ) -> dict:
     response = {
         "created": 0,
@@ -137,7 +138,8 @@ def import_assets(
     }
     relations = []
 
-    for item in data:
+    for i in range(len(data)):
+        item = data[i]
         try:
             asset_data = AssetCreate.model_validate(item)
         except ValidationError as e:
@@ -147,28 +149,35 @@ def import_assets(
                 "error": "Validation failed.",
                 "details": e.errors(),
             })
-            continue
+        else:
+            try:
+                with db.begin_nested():
+                    _, is_new = create_asset(db, organization_id, asset_data, commit=False)
+                    if is_new:
+                        response["created"] += 1
+                    else:
+                        response["updated"] += 1
 
-        try:
-            with db.begin_nested():
-                _, is_new = create_asset(db, organization_id, asset_data, commit=False)
-                if is_new:
-                    response["created"] += 1
-                else:
-                    response["updated"] += 1
+                    extract_asset_relations(asset_data, relations)
 
-                extract_asset_relations(asset_data, relations)
+            except Exception:
+                response["failed"] += 1
+                response["errors"].append({
+                    "asset": item.get("id"),
+                    "error": "Failed to import asset.",
+                })
 
-        except Exception as e:
-            response["failed"] += 1
-            response["errors"].append({
-                "asset": item.get("id"),
-                "error": "Failed to import asset.",
-            })
-            continue
+        if job_id is not None and i % 100 == 0:
+            update_import_job_progress(
+                db,
+                job_id,
+                processed_rows=i + 1,
+                response=response,
+            )
     db.commit()
 
-    for relation in relations:
+    for i in range(len(relations)):
+        relation = relations[i]
         try:
             with db.begin_nested():
                 create_relation_crud(db, organization_id, relation, commit=False)
@@ -189,7 +198,24 @@ def import_assets(
                 "relation": relation.from_id,
                 "error": "Unexpected error while creating relation."
             })
+
+        if job_id is not None and i % 100 == 0:
+            update_import_job_progress(
+                db,
+                job_id,
+                processed_rows=len(data),
+                response=response,
+            )
     db.commit()
+
+    if job_id is not None:
+        update_import_job_progress(
+            db,
+            job_id,
+            processed_rows=len(data),
+            response=response,
+            finished=True,
+        )
 
     return response
   
