@@ -12,3 +12,5 @@ JWT_ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_ACCESS_TOKEN_EXPIRE_MINUTES
 EXPIRING_SOON_DAYS = int(os.getenv("EXPIRING_SOON_DAYS", "30"))
 RATE_LIMIT_REQUESTS = int(os.getenv("RATE_LIMIT_REQUESTS", "100"))
 RATE_LIMIT_WINDOW = int(os.getenv("RATE_LIMIT_WINDOW", "60"))
+ENV = os.getenv("ENV", "dev")
+APITALLY_CLIENT_ID = os.getenv("APITALLY_CLIENT_ID", "your-client-id-here")

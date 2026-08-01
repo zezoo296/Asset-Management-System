@@ -1,12 +1,14 @@
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
 from core.database import get_db
 from core.security import decode_access_token
 from models.organization import Organization
+from apitally.fastapi import set_consumer
+
 
 bearer_scheme = HTTPBearer()
 
@@ -37,3 +39,11 @@ def get_current_organization(
         raise credentials_exception
 
     return organization
+
+
+def identify_consumer(request: Request, current_org: Organization = Depends(get_current_organization)) -> None:
+    set_consumer(
+        request,
+        identifier=str(current_org.id),
+        name=current_org.name
+    )
