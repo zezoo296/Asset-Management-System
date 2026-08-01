@@ -29,6 +29,40 @@ This starts:
 - Swagger UI: [http://localhost:8000/docs](http://localhost:8000/docs)
 - ReDoc: [http://localhost:8000/redoc](http://localhost:8000/redoc)
 
+### Centralized logging and monitoring with Apitally
+
+This service is already configured to send request telemetry to Apitally through the FastAPI middleware in `app/main.py`:
+
+```python
+app.add_middleware(
+    ApitallyMiddleware,
+    client_id=APITALLY_CLIENT_ID,
+    env=ENV,
+    enable_request_logging=True,
+    capture_logs=True,
+    capture_traces=True,
+)
+```
+
+In practice, that gives you a single centralized place to observe:
+
+- request/response activity for the API
+- distributed trace capture across service calls
+- tenant-aware consumer identity via the organization JWT subject
+- masked payload logging for sensitive values such as password and token fields
+
+The consumer identity is attached during auth resolution so logs and traces can be grouped by organization:
+
+```python
+set_consumer(
+    request,
+    identifier=str(current_org.id),
+    name=current_org.name,
+)
+```
+
+Set the Apitally client ID in your environment and point the app at the same service instance for all environments. This keeps operational diagnostics centralized instead of scattering them across ad hoc file logs or one-off debugging sessions.
+
 ### First request (auth flow)
 
 All asset and relationship endpoints require a JWT. Sign up, log in, then call the API with the token.
@@ -57,15 +91,17 @@ curl -X POST http://localhost:8000/api/v1/assets/ \
 
 Copy `.env.example` to `.env` and adjust as needed.
 
-| Variable                          | Description                                    | Default                                                        |
-| --------------------------------- | ---------------------------------------------- | -------------------------------------------------------------- |
-| `DATABASE_URL`                    | PostgreSQL connection string                   | `postgresql://postgres:your_password@db:5432/asset_management` |
-| `JWT_SECRET_KEY`                  | Secret used to sign JWTs                       | _(required in production)_                                     |
-| `JWT_ALGORITHM`                   | JWT signing algorithm                          | `HS256`                                                        |
-| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime in minutes                      | `1440`                                                         |
-| `EXPIRING_SOON_DAYS`              | Window for “expiring soon” certificate queries | `30`                                                           |
-| `RATE_LIMIT_REQUESTS`             | Max requests per IP per window                 | `100`                                                          |
-| `RATE_LIMIT_WINDOW`               | Rate limit window in seconds                   | `60`                                                           |
+| Variable                          | Description                                            | Default                                                        |
+| --------------------------------- | ------------------------------------------------------ | -------------------------------------------------------------- |
+| `DATABASE_URL`                    | PostgreSQL connection string                           | `postgresql://postgres:your_password@db:5432/asset_management` |
+| `ENV`                             | Runtime environment name for Apitally                  | `dev`                                                          |
+| `JWT_SECRET_KEY`                  | Secret used to sign JWTs                               | _(required in production)_                                     |
+| `JWT_ALGORITHM`                   | JWT signing algorithm                                  | `HS256`                                                        |
+| `JWT_ACCESS_TOKEN_EXPIRE_MINUTES` | Token lifetime in minutes                              | `1440`                                                         |
+| `EXPIRING_SOON_DAYS`              | Window for “expiring soon” certificate queries         | `30`                                                           |
+| `RATE_LIMIT_REQUESTS`             | Max requests per IP per window                         | `100`                                                          |
+| `RATE_LIMIT_WINDOW`               | Rate limit window in seconds                           | `60`                                                           |
+| `APITALLY_CLIENT_ID`              | Apitally project client ID for centralized logs/traces | `your-client-id-here`                                          |
 
 Secrets must **not** be committed. Only `.env.example` is tracked in the repo.
 
